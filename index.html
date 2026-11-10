@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>COD Paisa Check — Courier Payment Reconciliation</title>
+<style>
+  :root{ --charcoal:#171717; --forest:#06110C; --crimson:#A31C1B; --bg:#FAF7F2; --card:#FFFFFF; --line:#E7E0D4; --ok:#1E7B34; --warn:#B45309; }
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  body{ font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif; background:var(--bg); color:var(--charcoal); }
+  header{ background:var(--forest); color:#fff; padding:16px; }
+  header h1{ font-size:20px; font-weight:800; letter-spacing:.2px; }
+  header h1 .dot{ color:var(--crimson); }
+  header p{ font-size:12.5px; opacity:.85; margin-top:3px; }
+  main{ max-width:860px; margin:0 auto; padding:14px; }
+  .card{ background:var(--card); border:1px solid var(--line); border-radius:14px; padding:14px; margin-bottom:14px; }
+  .drop{ border:2px dashed #C9BFA9; border-radius:12px; padding:20px 14px; text-align:center; cursor:pointer; background:#FFFDF8; display:block; }
+  .drop:hover,.drop.over{ border-color:var(--crimson); }
+  .drop b{ font-size:15px; }
+  .drop span{ display:block; font-size:12.5px; color:#6B655A; margin-top:4px; }
+  .drop input{ display:none; }
+  .rates{ display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; }
+  .rates label{ flex:1; min-width:100px; font-size:12px; font-weight:600; color:#55504A; }
+  .rates input{ width:100%; margin-top:4px; padding:9px 10px; border:1px solid var(--line); border-radius:9px; font-size:15px; }
+  .hint{ font-size:12px; color:#6B655A; margin-top:8px; line-height:1.5; }
+  .grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  @media(min-width:640px){ .grid{ grid-template-columns:repeat(4,1fr); } }
+  .stat{ background:var(--card); border:1px solid var(--line); border-radius:14px; padding:13px; }
+  .stat .k{ font-size:11.5px; font-weight:700; letter-spacing:.4px; color:#6B655A; text-transform:uppercase; }
+  .stat .v{ font-size:21px; font-weight:800; margin-top:4px; }
+  .stat.alert{ border-color:var(--crimson); }
+  .stat.alert .v{ color:var(--crimson); }
+  h2{ font-size:15.5px; margin:4px 0 10px; }
+  .prob{ border:1px solid #F0D9C8; border-left:5px solid var(--crimson); background:#FFF9F4; border-radius:10px; padding:11px 12px; margin-bottom:9px; }
+  .prob .cn{ font-weight:800; font-size:14px; }
+  .prob .rs{ font-size:13px; margin-top:3px; color:#4A453E; line-height:1.45; }
+  .prob select{ margin-top:8px; padding:6px 8px; border:1px solid var(--line); border-radius:8px; font-size:12.5px; font-weight:600; }
+  .prob.closed{ opacity:.55; border-left-color:#7A746A; }
+  .chip{ display:inline-block; font-size:10.5px; font-weight:800; padding:2.5px 8px; border-radius:99px; color:#fff; vertical-align:2px; margin-left:6px; }
+  .chip.bad{ background:var(--crimson); } .chip.warn{ background:var(--warn); } .chip.ok{ background:var(--ok); } .chip.grey{ background:#7A746A; }
+  .filters{ display:flex; gap:7px; flex-wrap:wrap; margin-bottom:10px; }
+  .filters button{ border:1px solid var(--line); background:#fff; border-radius:99px; padding:6px 13px; font-size:12.5px; font-weight:700; cursor:pointer; }
+  .filters button.on{ background:var(--charcoal); color:#fff; border-color:var(--charcoal); }
+  .btnrow{ display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+  .btn{ border:0; border-radius:10px; padding:10px 14px; font-size:13.5px; font-weight:800; cursor:pointer; background:var(--charcoal); color:#fff; }
+  .btn.red{ background:var(--crimson); }
+  .btn.ghost{ background:#fff; color:var(--charcoal); border:1px solid var(--line); }
+  table{ width:100%; border-collapse:collapse; font-size:12.8px; }
+  th{ text-align:left; padding:8px 6px; border-bottom:2px solid var(--line); color:#6B655A; font-size:11px; text-transform:uppercase; letter-spacing:.4px; }
+  td{ padding:8px 6px; border-bottom:1px solid #F0EBE0; vertical-align:top; }
+  .tblwrap{ overflow-x:auto; }
+  .empty{ text-align:center; color:#6B655A; font-size:13.5px; padding:26px 10px; }
+  .hist{ font-size:12.5px; color:#4A453E; line-height:1.7; }
+  .hist li{ margin-left:16px; }
+  #search{ width:100%; padding:9px 11px; border:1px solid var(--line); border-radius:9px; font-size:14px; margin-bottom:10px; }
+  footer{ text-align:center; font-size:12px; color:#8A8378; padding:8px 14px 26px; line-height:1.6; }
+  #msg{ display:none; background:#FDECEC; border:1px solid #F3C2C2; color:#7A1210; border-radius:10px; padding:10px 12px; font-size:13px; margin-bottom:12px; }
+  #toast{ display:none; background:var(--forest); color:#fff; border-radius:10px; padding:10px 12px; font-size:13px; margin-bottom:12px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>COD Paisa Check<span class="dot">.</span></h1>
+  <p>Courier ne aap ke parcels ka paisa sahi diya ya nahi — parcel by parcel hisaab.</p>
+</header>
+<main>
+  <div id="msg"></div>
+  <div id="toast"></div>
+
+  <div class="card">
+    <label class="drop" id="drop">
+      <b>📂 DigiDokaan ki CSV file yahan dein</b>
+      <span>All Orders export ya Ready For Payment wali file — click karke chunein ya yahan ghaseet dein. Wohi file dobara dene se hisaab double nahi hoga.</span>
+      <input type="file" id="file" accept=".csv,text/csv">
+    </label>
+    <div class="rates">
+      <label>Delivery charge (Rs / parcel)<input type="number" id="rDc" value="228" min="0"></label>
+      <label>Sales tax %<input type="number" id="rSt" value="2" step="0.1" min="0"></label>
+      <label>Income tax %<input type="number" id="rIt" value="2" step="0.1" min="0"></label>
+    </div>
+    <p class="hint">Rate apne zamane ka dalein: November 2026 me delivery Rs 228 thi, August 2026 me Rs 212. Tax aam tor par 2% + 2% kat-ta hai. Rate aur data aap ke browser me hi save rehte hain.</p>
+    <p class="hint" id="fileInfo"></p>
+    <div class="btnrow">
+      <button class="btn ghost" id="clearBtn">🧹 Saved data saaf karein (naya aghaz)</button>
+    </div>
+  </div>
+
+  <div id="out" style="display:none">
+    <div class="grid" style="margin-bottom:14px">
+      <div class="stat"><div class="k">Ana tha (delivered)</div><div class="v" id="sExp">—</div></div>
+      <div class="stat"><div class="k">Aya</div><div class="v" id="sPaid">—</div></div>
+      <div class="stat" id="sFaraqCard"><div class="k">Faraq</div><div class="v" id="sFaraq">—</div></div>
+      <div class="stat alert"><div class="k">Masla parcels</div><div class="v" id="sProb">—</div></div>
+    </div>
+    <p class="hint" id="sCounts" style="margin:-6px 0 14px"></p>
+
+    <div class="card">
+      <h2>⚠️ Pehle ye dekhein — masla wale parcels</h2>
+      <div id="probs"><p class="empty">Koi masla nahi mila — sab delivered parcels ka hisaab saaf hai.</p></div>
+      <div class="btnrow">
+        <button class="btn red" id="claimBtn">⬇️ Claim list download (Excel/CSV)</button>
+        <button class="btn" id="waBtn">💬 WhatsApp report copy karein</button>
+      </div>
+      <p class="hint">Claim list me sirf wo parcels jate hain jin ka claim abhi khula hai (status "Paisa aa gaya" / "Khatam" wale nahi jate).</p>
+    </div>
+
+    <div class="card">
+      <h2>📅 Mahine ka khulasa</h2>
+      <div class="tblwrap"><table>
+        <thead><tr><th>Mahina</th><th>Parcels</th><th>Delivered</th><th>Ana tha</th><th>Aya</th><th>Faraq</th><th>Masla</th></tr></thead>
+        <tbody id="months"></tbody>
+      </table></div>
+    </div>
+
+    <div class="card">
+      <h2>Sare parcels</h2>
+      <input id="search" type="text" placeholder="Tracking number ya order number likh kar dhundein…">
+      <div class="filters" id="filters">
+        <button data-f="ALL" class="on">Sab</button>
+        <button data-f="SAHI">✅ Sahi</button>
+        <button data-f="PROB">⚠️ Masla</button>
+        <button data-f="RETURN">↩️ Return</button>
+        <button data-f="PENDING">⏳ Pending</button>
+      </div>
+      <div class="tblwrap"><table>
+        <thead><tr><th>Tracking</th><th>Order</th><th>Status</th><th>COD</th><th>Ana tha</th><th>Aya</th><th>Label</th></tr></thead>
+        <tbody id="tbody"></tbody>
+      </table></div>
+    </div>
+
+    <div class="card">
+      <h2>🕘 Import history (is browser me save)</h2>
+      <ul class="hist" id="hist"><li>Abhi koi import nahi</li></ul>
+    </div>
+  </div>
+</main>
+<footer>
+  Aap ki file sirf aap ke browser ke andar parhi jati hai — kahin upload nahi hoti. Data isi browser me save rehta hai.<br>
+  COD Paisa Check · Stages 1–5 (test version)
+</footer>
+<script src="core.js"></script>
+<script>
+(function(){
+  var LS_P='codrecon.parcels.v1', LS_I='codrecon.imports.v1', LS_C='codrecon.claims.v1', LS_R='codrecon.rate.v1';
+  var parcels=[], imports=[], claims={}, last=null, filter='ALL';
+  var $=function(id){ return document.getElementById(id); };
+  var fmt=CODRecon.fmt;
+  function lsGet(k,d){ try{ var v=localStorage.getItem(k); return v?JSON.parse(v):d; }catch(e){ return d; } }
+  function lsSet(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
+  function showMsg(t){ var m=$('msg'); m.textContent=t; m.style.display=t?'block':'none'; }
+  function toast(t){ var m=$('toast'); m.textContent=t; m.style.display='block'; setTimeout(function(){ m.style.display='none'; }, 3500); }
+  function rate(){ return { dc: parseFloat($('rDc').value)||0, stPct: parseFloat($('rSt').value)||0, itPct: parseFloat($('rIt').value)||0 }; }
+  function chip(label){
+    if (label==='SAHI') return '<span class="chip ok">SAHI</span>';
+    if (label==='KAM-AYA'||label==='KAGAZ-NAHI') return '<span class="chip bad">'+label+'</span>';
+    if (label==='RETURN') return '<span class="chip grey">RETURN</span>';
+    if (label==='PENDING') return '<span class="chip grey">PENDING</span>';
+    return '<span class="chip warn">'+label+'</span>';
+  }
+  function openClaims(){ return CODRecon.claimRows(last?last.results:[]).filter(function(c){ var st=claims[c.Tracking]||'Naya'; return st!=='Paisa aa gaya'&&st!=='Khatam'; }); }
+
+  function render(){
+    if (!parcels.length){ $('out').style.display='none'; return; }
+    last=CODRecon.reconcile(parcels, rate());
+    var s=last.summary;
+    $('out').style.display='block';
+    $('sExp').textContent='Rs '+fmt(s.expectedTotal);
+    $('sPaid').textContent='Rs '+fmt(s.paidTotal);
+    $('sFaraq').textContent=(s.faraqTotal===0?'Rs 0':(s.faraqTotal>0?'+ Rs ':'− Rs ')+fmt(Math.abs(s.faraqTotal)));
+    $('sFaraqCard').className='stat'+(s.kamTotal>0?' alert':'');
+    $('sProb').textContent=s.problems.length;
+    $('sCounts').textContent='Kul parcels: '+s.totalParcels+' · Delivered: '+s.delivered+' (sahi: '+s.sahi+') · Returned: '+s.returned+' (un par kata: Rs '+fmt(s.returnKatTotal)+') · Pending: '+s.pending+' (un par lag chuka minus: Rs '+fmt(s.pendingMinusTotal)+')';
+
+    var probs=$('probs');
+    if (!s.problems.length){
+      probs.innerHTML='<p class="empty">Koi masla nahi mila — sab delivered parcels ka hisaab saaf hai.</p>';
+    } else {
+      probs.innerHTML=s.problems.map(function(r){
+        var st=claims[r.tracking]||'Naya';
+        var closed=(st==='Paisa aa gaya'||st==='Khatam');
+        return '<div class="prob'+(closed?' closed':'')+'"><span class="cn">'+r.tracking+'</span>'+chip(r.label)+
+          '<div class="rs">Order '+r.order+' · COD Rs '+fmt(r.amount)+' · Aya Rs '+fmt(r.paid)+'<br>'+r.reason+'</div>'+
+          '<select data-cn="'+r.tracking+'" class="claimSel">'+
+          ['Naya','Claim bheja','Paisa aa gaya','Khatam'].map(function(o){ return '<option'+(o===st?' selected':'')+'>'+o+'</option>'; }).join('')+
+          '</select></div>';
+      }).join('');
+      Array.prototype.forEach.call(probs.querySelectorAll('.claimSel'), function(sel){
+        sel.addEventListener('change', function(){ claims[this.getAttribute('data-cn')]=this.value; lsSet(LS_C, claims); render(); });
+      });
+    }
+
+    $('months').innerHTML=CODRecon.monthSummary(last.results).map(function(m){
+      return '<tr><td><b>'+m.label+'</b></td><td>'+m.parcels+'</td><td>'+m.delivered+'</td><td>'+fmt(m.expected)+'</td><td>'+fmt(m.paid)+'</td><td>'+(m.faraq===0?'0':fmt(m.faraq))+'</td><td>'+m.problems+'</td></tr>';
+    }).join('');
+
+    $('hist').innerHTML=imports.length?imports.slice().reverse().map(function(im){
+      return '<li><b>'+im.when+'</b> — '+im.name+' ('+(im.format==='all-orders'?'All Orders':'Ready For Payment')+') · naye '+im.added+' · update '+im.updated+' · kul parcels ab '+im.total+'</li>';
+    }).join(''):'<li>Abhi koi import nahi</li>';
+    renderTable();
+  }
+
+  function renderTable(){
+    if (!last) return;
+    var q=($('search').value||'').trim().toLowerCase();
+    var rows=last.results.filter(function(r){
+      if (q && r.tracking.toLowerCase().indexOf(q)<0 && String(r.order).toLowerCase().indexOf(q)<0) return false;
+      if (filter==='ALL') return true;
+      if (filter==='PROB') return CODRecon.PROBLEM_LABELS.concat(['ZYADA-AYA']).indexOf(r.label)>=0;
+      return r.label===filter;
+    });
+    $('tbody').innerHTML=rows.map(function(r){
+      return '<tr><td><b>'+r.tracking+'</b></td><td>'+r.order+'</td><td>'+(r.delivered?'Delivered':(r.status||''))+'</td><td>'+fmt(r.amount)+'</td><td>'+(r.expected===null?'—':fmt(r.expected))+'</td><td>'+fmt(r.paid)+'</td><td>'+chip(r.label)+'</td></tr>';
+    }).join('')||'<tr><td colspan="7" class="empty">Is filter me kuch nahi</td></tr>';
+  }
+
+  function handleFile(f){
+    if (!f) return;
+    var rd=new FileReader();
+    rd.onload=function(){
+      try{
+        var parsed=CODRecon.parseFile(String(rd.result));
+        if (parsed.format==='unknown'||!parsed.parcels.length){ showMsg('Ye file pehchani nahi gayi. DigiDokaan ki All Orders export ya Ready For Payment wali CSV dein.'); return; }
+        showMsg('');
+        var mg=CODRecon.mergeParcels(parcels, parsed.parcels);
+        parcels=mg.merged;
+        imports.push({ when:new Date().toLocaleString('en-GB'), name:f.name, format:parsed.format, added:mg.added, updated:mg.updated, total:parcels.length });
+        lsSet(LS_P,parcels); lsSet(LS_I,imports); lsSet(LS_R, rate());
+        $('fileInfo').textContent='File: '+f.name+' · Format: '+(parsed.format==='all-orders'?'All Orders (order + paisa)':'Ready For Payment')+' · Is file se naye '+mg.added+' · update '+mg.updated+' · kul saved parcels '+parcels.length;
+        toast('Hisaab tayyar — '+mg.added+' naye parcels mile, '+mg.updated+' update hue. Double hisaab nahi laga.');
+        render();
+      }catch(e){ showMsg('File parhne me masla aya: '+e.message); }
+    };
+    rd.readAsText(f);
+  }
+
+  $('file').addEventListener('change', function(){ handleFile(this.files[0]); this.value=''; });
+  var drop=$('drop');
+  ['dragover','dragleave','drop'].forEach(function(ev){
+    drop.addEventListener(ev, function(e){ e.preventDefault(); drop.classList.toggle('over', ev==='dragover'); if (ev==='drop') handleFile(e.dataTransfer.files[0]); });
+  });
+  ['rDc','rSt','rIt'].forEach(function(id){ $(id).addEventListener('input', function(){ lsSet(LS_R, rate()); render(); }); });
+  $('search').addEventListener('input', renderTable);
+  $('filters').addEventListener('click', function(e){
+    if (e.target.tagName!=='BUTTON') return;
+    filter=e.target.getAttribute('data-f');
+    Array.prototype.forEach.call(this.children, function(b){ b.classList.toggle('on', b===e.target); });
+    renderTable();
+  });
+  $('claimBtn').addEventListener('click', function(){
+    var open=openClaims();
+    if (!open.length){ toast('Khula claim koi nahi — claim list khali hai.'); return; }
+    var csv=CODRecon.toCSV(open, ['Tracking','Order','Date','COD','AnaTha','Aya','Faraq','Masla','Cheque']);
+    var a=document.createElement('a');
+    a.href=URL.createObjectURL(new Blob([csv], {type:'text/csv'}));
+    a.download='cod-claim-list.csv'; a.click(); URL.revokeObjectURL(a.href);
+    toast('Claim list download ho gayi — '+open.length+' parcels.');
+  });
+  $('waBtn').addEventListener('click', function(){
+    if (!last) return;
+    var txt=CODRecon.weeklyText(last.summary, openClaims().length);
+    if (navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(txt).then(function(){ toast('WhatsApp report copy ho gayi — jahan chahein paste kar dein.'); }); }
+    else { prompt('Copy karein:', txt); }
+  });
+  $('clearBtn').addEventListener('click', function(){
+    if (!confirm('Saved parcels, history aur claim status sab saaf ho jaye ga. Pakka?')) return;
+    parcels=[]; imports=[]; claims={};
+    localStorage.removeItem(LS_P); localStorage.removeItem(LS_I); localStorage.removeItem(LS_C);
+    $('fileInfo').textContent=''; render(); toast('Sab saaf — nayi file de kar naya aghaz karein.');
+  });
+
+  // saved data se aghaz
+  parcels=lsGet(LS_P,[]); imports=lsGet(LS_I,[]); claims=lsGet(LS_C,{});
+  var sr=lsGet(LS_R,null); if (sr){ $('rDc').value=sr.dc; $('rSt').value=sr.stPct; $('rIt').value=sr.itPct; }
+  if (parcels.length){ $('fileInfo').textContent='Saved data load ho gaya — kul '+parcels.length+' parcels pehle se save hain. Nayi file dein to hisaab aage barhe ga, double nahi hoga.'; render(); }
+})();
+</script>
+</body>
+</html>
